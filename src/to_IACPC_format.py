@@ -1,17 +1,18 @@
 import json
+import consts
 
 def transform_data(input_data):
     output_data = {
-        "title": "Наша база металлопорошковых материалов",
+        "title": consts.NAME_METAL_POWDER_BD,
         "code": "4640008237959055854",
-        "path": "dereviagin.dd@dvfu.ru / Мой Фонд / Загрузки / Наша база металлопорошковых материалов$;",
+        "path": consts.PATH_TO_METAL_POWDER_BD,
         "date": "23.04.2025-20:55:18.103",
         "creation": "23.04.2025-20:55:18.103",
         "owner_id": 746,
         "json_type": "universal",
-        "ontology": "dereviagin.dd@dvfu.ru / Мой Фонд / Загрузки / Онтология базы металлопорошковых материалов$;",
+        "ontology": consts.PATH_TO_METAL_POWDER_ONTOLOGY,
         "id": 352303282388996,
-        "name": "Наша база металлопорошковых материалов",
+        "name": consts.NAME_METAL_POWDER_BD,
         "type": "КОРЕНЬ",
         "meta": "Онтология базы металлопорошковых материалов",
         "successors": [
