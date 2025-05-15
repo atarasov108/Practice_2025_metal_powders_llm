@@ -1,8 +1,8 @@
 NAME_METAL_POWDER_BD = "Наша база металлопорошковых материалов"
+NAME_METAL_POWDER_ONTOLOGY = "Онтология базы металлопорошковых материалов"
 
-PATH_TO_METAL_POWDER_BD = "dereviagin.dd@dvfu.ru / Мой Фонд / Загрузки / Наша база металлопорошковых материалов$;"
+PATH_TO_METAL_POWDER = "dereviagin.dd@dvfu.ru / Мой Фонд / Загрузки / "
 
-PATH_TO_METAL_POWDER_ONTOLOGY = "dereviagin.dd@dvfu.ru / Мой Фонд / Загрузки / Онтология базы металлопорошковых материалов$;"
 
 PROMPT = """
 Извлеки информацию о материале из текста и представь в JSON. Формат:
