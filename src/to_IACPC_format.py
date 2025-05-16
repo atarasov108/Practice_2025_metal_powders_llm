@@ -13,9 +13,9 @@ def transform_data(input_data):
         "json_type": "universal",
         "ontology": consts.PATH_TO_METAL_POWDER + consts.NAME_METAL_POWDER_ONTOLOGY + "$;",
         "id": 352303282388996,
-        "name": "Наша база металлопорошковых материалов",
+        "name": consts.NAME_METAL_POWDER_BD,
         "type": "КОРЕНЬ",
-        "meta": "Онтология базы металлопорошковых материалов",
+        "meta": consts.NAME_METAL_POWDER_ONTOLOGY,
         "successors": [
             {
                 "id": 111274012704776,
@@ -27,13 +27,12 @@ def transform_data(input_data):
         ]
     }
     
-    
     materials = output_data["successors"][0]["successors"]
     powder_id = 1112454342  # Начальный ID для порошков
     component_id = 111274012705976  # Начальный ID для компонентов
     
     # База химических элементов для формирования ссылок
-    element_base_path = "dereviagin.dd@dvfu.ru / Мой Фонд / Загрузки / База химических элементов$"
+    element_base_path = consts.PATH_TO_METAL_POWDER + "База химических элементов$"
     
     # Словарь соответствия русских названий элементов и их символов
     element_names = {
@@ -120,12 +119,47 @@ def transform_data(input_data):
                         break
                 
                 if not component_exists:
-                    all_components.append({
+                    new_component = {
                         "name": element_name,  # Русское название
                         "symbol": element_symbol,  # Символ элемента
                         "meta": element.get("meta", "Химический элемент"),
                         "elements": []
-                    })
+                    }
+                    
+                    # Добавляем все значения для этого элемента
+                    values = []
+                    for value in element.get("successors", []):
+                        if value.get("type") == "ТЕРМИНАЛ-ЗНАЧЕНИЕ":
+                            # Для одного значения используем "Числовое значение"
+                            if len(element.get("successors", [])) == 1:
+                                values.append({
+                                    "value": value.get("value"),
+                                    "valtype": value.get("valtype", "REAL"),
+                                    "meta": "Числовое значение"
+                                })
+                            else:
+                                values.append({
+                                    "value": value.get("value"),
+                                    "valtype": value.get("valtype", "REAL"),
+                                    "meta": value.get("meta", "%")
+                                })
+                    
+                    if len(values) == 2:
+                        try:
+                            val1 = float(values[0]["value"].replace(",", "."))
+                            val2 = float(values[1]["value"].replace(",", "."))
+                            if val1 < val2:
+                                values[0]["meta"] = "Не менее"
+                                values[1]["meta"] = "Не более"
+                            else:
+                                values[0]["meta"] = "Не более"
+                                values[1]["meta"] = "Не менее"
+                        except (ValueError, AttributeError):
+                            # Если не удалось сравнить как числа, оставляем исходные метки
+                            pass
+                
+                    new_component["values"] = values
+                    all_components.append(new_component)
         
         # Формируем структуру с промежуточным уровнем "Компонент"
         component_counter = 1
@@ -181,21 +215,145 @@ def transform_data(input_data):
                 "successors": []
             }
             component_id += 4
+
+            if len(component["values"]) == 1 and "-" in component["values"][0]["value"]:
+                # Обрабатываем случай с интервалом (например "3-4.5")
+                interval_str = component["values"][0]["value"]
+                try:
+                    lower_str, upper_str = interval_str.split("-", 1)
+                    lower_val = float(lower_str.strip().replace(",", "."))
+                    upper_val = float(upper_str.strip().replace(",", "."))
             
-            # Добавляем значения для элемента (если это химический элемент)
-            if chem_composition and component["meta"] != "Основной компонент":
-                element_data = next((e for e in chem_composition.get("successors", []) 
-                                  if e.get("name") == component["name"]), None)
-                if element_data:
-                    for value in element_data.get("successors", []):
-                        if value.get("type") == "ТЕРМИНАЛ-ЗНАЧЕНИЕ":
-                            element_node["successors"].append({
-                                "value": value.get("value", ""),
-                                "type": "ТЕРМИНАЛ-ЗНАЧЕНИЕ",
-                                "valtype": value.get("valtype", "REAL"),
-                                "meta": "%"
-                            })
+                    # Создаем структуру числового интервала
+                    interval_node = {
+                        "id": component_id,
+                        "name": "Числовой интервал",
+                        "type": "НЕТЕРМИНАЛ",
+                        "meta": "Числовой интервал",
+                        "successors": []
+                    }
+                    component_id += 4
             
+                    # Нижняя граница
+                    lower_bound = {
+                        "id": component_id,
+                        "name": "Нижняя граница",
+                        "type": "НЕТЕРМИНАЛ",
+                        "meta": "Нижняя граница",
+                        "successors": [{
+                            "id": component_id + 2,
+                            "value": lower_val,
+                            "type": "ТЕРМИНАЛ-ЗНАЧЕНИЕ",
+                            "valtype": "REAL",
+                            "meta": "Числовое значение"
+                        }]
+                    }
+                    component_id += 4
+            
+                    # Верхняя граница
+                    upper_bound = {
+                        "id": component_id,
+                        "name": "Верхняя граница",
+                        "type": "НЕТЕРМИНАЛ",
+                        "meta": "Верхняя граница",
+                        "successors": [{
+                            "id": component_id + 2,
+                            "value": upper_val,
+                            "type": "ТЕРМИНАЛ-ЗНАЧЕНИЕ",
+                            "valtype": "REAL",
+                            "meta": "Числовое значение"
+                        }]
+                    }
+                    component_id += 4
+            
+                    interval_node["successors"] = [lower_bound, upper_bound]
+                    element_node["successors"].append(interval_node)
+            
+                except (ValueError, AttributeError, IndexError):
+                    # Если не удалось разобрать интервал, добавляем как есть
+                    element_node["successors"].append({
+                        "value": component["values"][0]["value"],
+                        "type": "ТЕРМИНАЛ-ЗНАЧЕНИЕ",
+                        "valtype": component["values"][0]["valtype"],
+                        "meta": "Числовое значение"
+                    })
+            
+            # Обрабатываем значения элемента
+            elif len(component["values"]) == 2:
+                # Создаем структуру числового интервала
+                interval_node = {
+                    "id": component_id,
+                    "name": "Числовой интервал",
+                    "type": "НЕТЕРМИНАЛ",
+                    "meta": "Числовой интервал",
+                    "successors": []
+                }
+                component_id += 4
+            
+                try:
+                    val1 = float(component["values"][0]["value"].replace(",", "."))
+                    val2 = float(component["values"][1]["value"].replace(",", "."))
+                
+                    # Определяем нижнюю и верхнюю границы
+                    if val1 < val2:
+                        lower_val, upper_val = val1, val2
+                    else:
+                        lower_val, upper_val = val2, val1
+                
+                    # Нижняя граница
+                    lower_bound = {
+                        "id": component_id,
+                        "name": "Нижняя граница",
+                        "type": "НЕТЕРМИНАЛ",
+                        "meta": "Нижняя граница",
+                        "successors": [{
+                            "id": component_id + 2,
+                            "value": lower_val,
+                            "type": "ТЕРМИНАЛ-ЗНАЧЕНИЕ",
+                            "valtype": "REAL",
+                            "meta": "Числовое значение"
+                        }]
+                    }
+                    component_id += 4
+                
+                    # Верхняя граница
+                    upper_bound = {
+                        "id": component_id,
+                        "name": "Верхняя граница",
+                        "type": "НЕТЕРМИНАЛ",
+                        "meta": "Верхняя граница",
+                        "successors": [{
+                            "id": component_id + 2,
+                            "value": upper_val,
+                            "type": "ТЕРМИНАЛ-ЗНАЧЕНИЕ",
+                            "valtype": "REAL",
+                            "meta": "Числовое значение"
+                        }]
+                    }
+                    component_id += 4
+                
+                    interval_node["successors"] = [lower_bound, upper_bound]
+                    element_node["successors"].append(interval_node)
+                
+                except (ValueError, AttributeError):
+                    # Если не удалось преобразовать в числа, добавляем значения как есть
+                    for value in component["values"]:
+                        element_node["successors"].append({
+                            "value": value["value"],
+                            "type": "ТЕРМИНАЛ-ЗНАЧЕНИЕ",
+                            "valtype": value["valtype"],
+                            "meta": "Числовое значение"
+                        })
+            else:
+                # Для одного значения добавляем просто как числовое значение
+                for value in component["values"]:
+                    element_node["successors"].append({
+                        "value": value["value"],
+                        "type": "ТЕРМИНАЛ-ЗНАЧЕНИЕ",
+                        "valtype": value["valtype"],
+                        "meta": "Числовое значение"
+                    })
+
             component_node["successors"].append(element_node)
             element_composition["successors"].append(component_node)
         
