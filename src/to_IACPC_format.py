@@ -27,12 +27,13 @@ def transform_data(input_data):
         ]
     }
     
+    
     materials = output_data["successors"][0]["successors"]
     powder_id = 1112454342  # Начальный ID для порошков
     component_id = 111274012705976  # Начальный ID для компонентов
     
     # База химических элементов для формирования ссылок
-    element_base_path = consts.PATH_TO_METAL_POWDER + "База химических элементов$"
+    element_base_path = "dereviagin.dd@dvfu.ru / Мой Фонд / Загрузки / База химических элементов$"
     
     # Словарь соответствия русских названий элементов и их символов
     element_names = {
@@ -157,6 +158,18 @@ def transform_data(input_data):
             if component["symbol"] == "K":
                 component["symbol"] = "Be"
                 original_path = f"{element_base_path}/Бериллий/Be;"
+
+            if component["symbol"] == "Окись Al":
+                component["symbol"] = "Al"
+                original_path = f"{element_base_path}/Алюминий/Al;"
+
+            if component["symbol"] == "Влага":
+                component["symbol"] = "H"
+                original_path = f"{element_base_path}/Водород/H;"
+
+            if component["symbol"] == "Жировые добавки":
+                component["symbol"] = "B"
+                original_path = f"{element_base_path}/Бор/B;"
 
             # Создаем узел для элемента/компонента
             element_node = {
